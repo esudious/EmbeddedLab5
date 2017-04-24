@@ -1090,11 +1090,11 @@ ARM Macro Assembler    Page 17
               00000400 
               00000000 
 Command Line: --debug --xref --diag_suppress=9931 --cpu=Cortex-M4.fp --apcs=int
-erwork --depend=.\startup.d -o.\startup.o -IC:\Keil_v5\EE319Kware\C10_TableTraf
-ficLight\RTE\_TableTrafficLight -IC:\Keil_v5\ARM\PACK\ARM\CMSIS\5.0.0\CMSIS\Inc
-lude -IC:\Keil_v5\ARM\PACK\Keil\LM4F_DFP\1.0.0\Device\Include --predefine="__EV
-AL SETA 1" --predefine="__UVISION_VERSION SETA 522" --predefine="_RTE_ SETA 1" 
---predefine="LM4F120 SETA 1" --list=.\startup.lst startup.s
+erwork --depend=.\startup.d -o.\startup.o -I.\RTE\_TableTrafficLight -ID:\ARM\P
+ACK\ARM\CMSIS\5.0.1\CMSIS\Include -ID:\ARM\PACK\Keil\LM4F_DFP\1.0.0\Device\Incl
+ude --predefine="__EVAL SETA 1" --predefine="__UVISION_VERSION SETA 523" --pred
+efine="_RTE_ SETA 1" --predefine="LM4F120 SETA 1" --list=.\startup.lst startup.
+s
 
 
 

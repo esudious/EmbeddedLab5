@@ -385,9 +385,29 @@
               <FilePath>.\startup.s</FilePath>
             </File>
             <File>
-              <FileName>SysTick.c</FileName>
+              <FileName>TableTrafficLight.c</FileName>
               <FileType>1</FileType>
-              <FilePath>.\SysTick.c</FilePath>
+              <FilePath>.\TableTrafficLight.c</FilePath>
+            </File>
+            <File>
+              <FileName>PLL.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\PLL.h</FilePath>
+            </File>
+            <File>
+              <FileName>SysTick.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\SysTick.h</FilePath>
+            </File>
+            <File>
+              <FileName>TExaS.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\TExaS.h</FilePath>
+            </File>
+            <File>
+              <FileName>tm4c123gh6pm.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\tm4c123gh6pm.h</FilePath>
             </File>
             <File>
               <FileName>PLL.c</FileName>
@@ -395,9 +415,9 @@
               <FilePath>.\PLL.c</FilePath>
             </File>
             <File>
-              <FileName>TableTrafficLight.c</FileName>
+              <FileName>SysTick.c</FileName>
               <FileType>1</FileType>
-              <FilePath>.\TableTrafficLight.c</FilePath>
+              <FilePath>.\SysTick.c</FilePath>
             </File>
           </Files>
         </Group>
