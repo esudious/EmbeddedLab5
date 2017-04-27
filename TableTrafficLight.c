@@ -48,8 +48,8 @@
 #define SYSCTL_RCGCGPIO_R   (*((volatile unsigned long *)0x400FE608))
 #define GPIO_PORTF_LOCK_R   (*((volatile unsigned long *)0x40025520))
 
-#define lng_wt 3000
-#define sht_wt 500
+#define lng_wt 30
+#define sht_wt 5
 
 void DisableInterrupts(void);
 void EnableInterrupts(void);
@@ -59,7 +59,6 @@ void ports_init(void);
 struct State {
   unsigned long Out; //LEDS
 	unsigned long Time;
-	unsigned long PF;
   unsigned long Next[8];
 }; 
 typedef const struct State STyp;
@@ -69,101 +68,90 @@ typedef const struct State STyp;
 #define goE   2
 #define waitE 3
 #define walk  4
-#define goNtoWlk 5
-#define wtNtoWalk 6
-#define goEtoWalk 7
-#define wtEtoWalk 8
-#define wlktoN 9
-#define wlktoE 10
-#define walkBlink1 11
-#define walkBlink2 12
-#define walkBlink3 13
-#define walkBlink4 14
-#define walkBlink5 15
-#define walkBlink6 16
-#define walkBlink7 17
+#define walkBlink1 5
+#define walkBlink2 6
+#define walkBlink3 7
+#define walkBlink4 8
+#define walkBlink5 9
+#define walkBlink6 10
 
-#define northGreenLight  0x21 //0x01 , northRedLight 0x04
-#define northYellowLight 0x22 //0x02
-#define eastGreenLight   0x0C //0x08   eastRedLight 0x20
-#define eastYellowLight  0x14 //0x10
-#define allRed   				 0x24 //
-#define greenWalk				 0x02
-#define redWalk 				 0x08
-
-//OUT, TIME, PF3 (walk green light)  N, E, N+E, P, E+P, N+P, All 
+#define northGreenLight  0xA1 //0x01 , northRedLight 0x04
+#define northYellowLight 0xA2 //0x02
+#define eastGreenLight   0x8C //0x08   eastRedLight 0x20
+#define eastYellowLight  0x94 //0x10
+#define allRed   		 		 0xA4 //0x80 + 0x20 + 0x04
+#define greenWalk		     0x64 //0x40  walkRed = 0x40
+//LIGHTS           WAIT    BUTTONS PRESSED N = 0x01, E = 0x02, W = 0x04
+//OUT,             TIME,   None, N,  E,   N+E,   W, E+W, N+W, All 
 STyp FSM[11]={
- {northGreenLight	,lng_wt,redWalk,	{goN,waitN,goN,waitN}}, //Go North (Green) 
- {northYellowLight,sht_wt,redWalk,	{waitN,goE,goE,goE}},  //Wait North (Yellow) next is East
- {eastGreenLight	,lng_wt,redWalk,	{goE,goE,waitE,waitE}}, //Go East (Green)
- {eastYellowLight	,sht_wt,redWalk,	{waitE,goN,goN,goN}},  //Wait East (Yellow) next is North
- {allRed					,sht_wt,greenWalk,{walk,walk,walk,walk}}, //Walk
- {northGreenLight	,lng_wt,redWalk,	{goN,waitN,goN,waitN}}, 			//Go North Next is Wait to walk
- {northYellowLight,sht_wt,redWalk,	{walk,walk,walk,walk}},  //Wait North (Yellow) next is Walk
- {eastGreenLight	,lng_wt,redWalk,	{walk,walk,walk,walk}},			//Go East Next is Wait East to walk
- {eastYellowLight	,sht_wt,redWalk,	{walk,walk,walk,walk}}, 																//Wait East (Yellow) next is Walk 
- {allRed					,sht_wt,greenWalk,{walk,walk,walk,walk}},																		
- {allRed					,sht_wt,redWalk ,	{walk,walk,walk,walk}}
+ {northGreenLight	,lng_wt,{goN,	goN,waitN,waitN,waitN,waitN,waitN,1}}, //Go North (Green) 
+ {northYellowLight,sht_wt,{goE,goE,goE,goE,walk,walk,walk,2}},  			//Wait North Yellow
+ {eastGreenLight	,lng_wt,{goE,	waitE,waitE,waitE,waitE,waitE,waitE,3}}, //Go East (Green)
+ {eastYellowLight	,sht_wt,{walk,goN,goN,goN,walk,walk,walk,4}},  //East Yellow 
+ {allRed					,sht_wt,{walkBlink1,walkBlink1,walkBlink1,walkBlink1,walkBlink1,walkBlink1,walkBlink1,5}}, //Walk
+ {greenWalk				,lng_wt,{walkBlink2,walkBlink2,walkBlink2,walkBlink2,walkBlink2,walkBlink2,walkBlink2,6}}, 			
+ {allRed					,sht_wt,{walkBlink3,walkBlink3,walkBlink3,walkBlink3,walkBlink3,walkBlink3,walkBlink3,7}},  
+ {greenWalk				,lng_wt,{walkBlink4,walkBlink4,walkBlink4,walkBlink4,walkBlink4,walkBlink4,walkBlink4,8}},	
+ {allRed					,sht_wt,{walkBlink5,walkBlink5,walkBlink5,walkBlink5,walkBlink5,walkBlink5,walkBlink5,9}}, 	
+ {greenWalk				,lng_wt,{walkBlink6,walkBlink6,walkBlink6,walkBlink6,walkBlink6,walkBlink6,walkBlink6,10}},																		
+ {allRed					,sht_wt,{goN,goN,goE,goN,walkBlink6,goE,goN,0}}
 };  
 	
 unsigned long S;  // index to the current state 
 unsigned long Input; 
 volatile unsigned long delay;
+unsigned long waittime;
+unsigned long walk_light;
 
 int main(void){ 
-  PLL_Initx();       // 80 MHz, Program 10.1
-  SysTick_Init();   // Program 10.2
-	EnableInterrupts();
+	
+	SysTick_Init();   // Program 10.2
+	PLL_Init();       // 80 MHz, Program 10.1
+	ports_init();
   
   S = goN;  
 	
+	EnableInterrupts();
+	
   while(1){
-    STREET_LIGHT = FSM[S].Out;  // set lights
-    SysTick_Wait10ms(FSM[S].Time);
-    Input = SENSOR;     // read sensors
+    STREET_LIGHT = FSM[S].Out;  // set street lights
+		GPIO_PORTB_OUT = (STREET_LIGHT & 0x3F);
+		walk_light = FSM[S].Out;
+		GPIO_PORTF_DATA_R = 0x0F & (((walk_light & 0x80)>>6) | ((walk_light & 0x40)>>3)); //LIGHTS FOR PF, PF3 = GREEN, PF1 = RED
+		waittime = FSM[S].Time;
+    SysTick_Wait10ms(waittime);
+    Input = GPIO_PORTE_DATA_R; 
     S = FSM[S].Next[Input];  
   }
 }
 
+
 void ports_init(){
-	// Port B
-  GPIO_PORTB_LOCK_R = 0x4C4F434B;   // unlock port
-  GPIO_PORTB_CR_R = 0x3F;           // allow changes to PB5-0
+	// Port B      
+	SYSCTL_RCGC2_R |= 0x32;						
+	delay = SYSCTL_RCGC2_R;   				// 1) B E
+  
+  //GPIO_PORTB_LOCK_R = 0x4C4F434B;   // unlock port
+  //GPIO_PORTB_CR_R = 0x3F;           // allow changes to PB5-0
 	GPIO_PORTB_PCTL_R = 0x00000000;   // clear PCTL
-  GPIO_PORTB_AMSEL_R &= ~0x3F;      // disable analog on PB5-0
+  GPIO_PORTB_AMSEL_R = 0x00;      // disable analog on PB5-0
   GPIO_PORTB_AFSEL_R &= ~0x3F;      // disable alt funct on PB5-0
   GPIO_PORTB_DEN_R |= 0x3F;         // enable digital I/O on PB5-0
 	GPIO_PORTB_DIR_R |= 0x3F;         // PB5-0 outputs
 	
-	// Port E
-  GPIO_PORTE_LOCK_R = 0x4C4F434B;   // unlock port
-  GPIO_PORTE_CR_R = 0x07;           // allow changes to PE2-0
-	GPIO_PORTE_PCTL_R = 0x00000000;   // clear PCTL
-  GPIO_PORTE_AMSEL_R &= ~0x07;      // disable analog on PE2-0
-  GPIO_PORTE_AFSEL_R &= ~0x07;      // disable alt funct on PE2-0
-  GPIO_PORTE_PUR_R &= ~0x07;        // disableb pull-up on PE2-0
-  GPIO_PORTE_DEN_R |= 0x07;         // enable digital I/O on PE2-0
-	GPIO_PORTE_DIR_R &= ~0x07;        // PE2-0 inputs
-	
-	SYSCTL_RCGC2_R |= 0x12;      // 1) B E
-  delay = SYSCTL_RCGC2_R;      // 2) no need to unlock
-  GPIO_PORTE_AMSEL_R &= ~0x03; // 3) disable analog function on PE1-0
-  GPIO_PORTE_PCTL_R &= ~0x000000FF; // 4) enable regular GPIO
-  GPIO_PORTE_DIR_R &= ~0x03;   // 5) inputs on PE1-0
-  GPIO_PORTE_AFSEL_R &= ~0x03; // 6) regular function on PE1-0
-  GPIO_PORTE_DEN_R |= 0x03;    // 7) enable digital on PE1-0
-  GPIO_PORTB_AMSEL_R &= ~0x3F; // 3) disable analog function on PB5-0
-  GPIO_PORTB_PCTL_R &= ~0x00FFFFFF; // 4) enable regular GPIO
-  GPIO_PORTB_DIR_R |= 0x3F;    // 5) outputs on PB5-0
-  GPIO_PORTB_AFSEL_R &= ~0x3F; // 6) regular function on PB5-0
-  GPIO_PORTB_DEN_R |= 0x3F;    // 7) enable digital on PB5-0
+	//PORT F
 	GPIO_PORTF_LOCK_R = 0x4C4F434B;   // 8) unlock GPIO Port F
   GPIO_PORTF_CR_R = 0x0A;           // allow changes to PF3 and PF1
   GPIO_PORTF_AMSEL_R &= ~0x0A; 			// 9) disable analog function on PF3 abd PF1
   GPIO_PORTF_PCTL_R = 0x00000000;   // 10) PCTL GPIO on PF4-0
-  GPIO_PORTF_DIR_R |= 0x0A;          // 11) PF3 and PF1 outputs
+  GPIO_PORTF_DIR_R |= 0x1F;          // 11) PF3 and PF1 outputs
   GPIO_PORTF_AFSEL_R &= ~0x0A; 			// 12) regular function on PF3 and PF1
   GPIO_PORTF_DEN_R |= 0x0A;    			// 13) enable digital on PF3 and PF1
+	GPIO_PORTF_PUR_R |= 0x0A;
+	// Port E
+	GPIO_PORTE_DIR_R		&= ~0x07; 
+	GPIO_PORTE_AFSEL_R		&= 0x00;
+	GPIO_PORTE_DEN_R		|= 0x07;
 }
 
 
